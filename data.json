@@ -1,0 +1,39 @@
+{
+    "productos": [
+        {
+            "nombre": "carro",
+            "precio": 54546.0,
+            "imagen": "static/uploads\\d78cee8e547a0636d0d55c134acf4a32.jpg",
+            "id": 1,
+            "habilitado": true,
+            "comentarios": [
+                {
+                    "nombre": "Albert ",
+                    "texto": "Muy bueno",
+                    "fecha": "30/11/2025, 16:16:32"
+                }
+            ]
+        },
+        {
+            "nombre": "Computadora",
+            "precio": 35465.0,
+            "imagen": "static/uploads\\backiee-298223.jpg",
+            "id": 2,
+            "habilitado": true,
+            "comentarios": [
+                {
+                    "nombre": "Anderson",
+                    "texto": "Chilero",
+                    "fecha": "30/11/2025, 16:33:43"
+                }
+            ]
+        },
+        {
+            "nombre": "bicicleta",
+            "precio": 888.0,
+            "imagen": "static/uploads\\login_fondo.jpg",
+            "id": 3,
+            "habilitado": true
+        }
+    ]
+}

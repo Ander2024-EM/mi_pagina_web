@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gestor de Productos</title>
+
+    <link rel="stylesheet" href="/static/styles.css" />
+
+    <!-- 🔥 SweetAlert2 (requerido para Swal.fire()) -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <!-- 🔥 Script principal con módulos -->
+    <script type="module" src="/static/js/main.js"></script>
+</head>
+
+<body>
+
+    <!-- ---------------- NAVBAR ---------------- -->
+    <nav class="navbar">
+        <h1 class="title">Gestor de Productos</h1>
+        <p class="subtitle">App Flask + JavaScript</p>
+    </nav>
+
+    <main class="container">
+
+        <!-- ------------- AGREGAR PRODUCTO ------------- -->
+        <section class="card glass">
+            <h2>Agregar producto</h2>
+
+            <div class="form-row">
+                <input id="nombre" type="text" placeholder="Nombre del producto" />
+                <input id="precio" type="number" placeholder="Precio" />
+                <input id="imagen" type="file" />
+                <button id="btnAgregar" class="btn-primary">Agregar</button>
+            </div>
+        </section>
+
+        <!-- ------------- BUSCADOR Y FILTROS ------------- -->
+        <section class="card glass">
+
+            <h2>Buscar y filtrar</h2>
+
+            <div class="filters">
+                <input id="searchInput" type="text" placeholder="Buscar producto..." />
+
+                <select id="filterEstado">
+                    <option value="todos">Todos</option>
+                    <option value="habilitados">Solo habilitados</option>
+                    <option value="deshabilitados">Solo deshabilitados</option>
+                </select>
+
+                <select id="filterPrecio">
+                    <option value="none">Ordenar por precio</option>
+                    <option value="asc">Precio ascendente</option>
+                    <option value="desc">Precio descendente</option>
+                </select>
+
+                <button id="btnExportar" class="btn-secondary">Exportar</button>
+            </div>
+        </section>
+
+        <!-- ------------- LISTA DE PRODUCTOS ------------- -->
+        <section class="card glass">
+            <h2>Lista de Productos</h2>
+            <div id="productosLista"></div>
+        </section>
+
+        <!-- ------------- COMENTARIOS ------------- -->
+        <section class="card glass">
+            <h2>Deja un comentario</h2>
+
+            <div class="form-row">
+                <input id="comentarioId" type="number" placeholder="ID del producto" />
+                <input id="comentarioNombre" type="text" placeholder="Tu nombre" />
+                <input id="comentarioTexto" type="text" placeholder="Tu comentario" />
+                <button id="btnComentar" class="btn-primary">Enviar</button>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="footer">
+        Curso: Python con JavaScript - Creado por Albert Elias
+    </footer>
+
+    <!-- ===== LOADER GLOBAL ===== -->
+    <div id="loaderOverlay" class="loader-overlay hidden">
+        <div class="spinner"></div>
+    </div>
+<!-- ========== MODAL EDITAR PRODUCTO ========== -->
+<div id="editModal" class="modal hidden">
+    <div class="modal-content glass">
+        <h2>Editar Producto</h2>
+
+        <div class="form-row">
+            <input type="text" id="editNombre" placeholder="Nombre">
+            <input type="number" id="editPrecio" placeholder="Precio">
+            <input type="file" id="editImagen">
+        </div>
+
+        <div class="modal-buttons">
+            <button id="btnGuardarCambios" class="btn-primary">Guardar</button>
+            <button id="btnCerrarModal" class="btn-delete">Cancelar</button>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
