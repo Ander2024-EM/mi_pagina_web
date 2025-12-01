@@ -109,7 +109,7 @@ const Main = {
     },
 
     // ==============================
-    // HABILITAR / DESHABILITAR
+    //  HABILITAR / DESHABILITAR
     // ==============================
     async toggle(id) {
         Utils.showLoader();
@@ -124,14 +124,14 @@ const Main = {
     },
 
     // ==============================
-    // ➤ EDITAR PRODUCTO (abrir modal)
+    //     EDITAR PRODUCTO (abrir modal)
     // ==============================
     editar(producto) {
         UI.abrirModal(producto);
     },
 
     // ==============================
-    // ➤ GUARDAR CAMBIOS DEL MODAL
+    //      GUARDAR CAMBIOS DEL MODAL
     // ==============================
     async guardarCambios() {
         Utils.showLoader();

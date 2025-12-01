@@ -80,7 +80,7 @@ export const UI = {
     },
 
     // =====================================================
-    // 🔴 MODAL — cerrar
+    //  MODAL — cerrar
     // =====================================================
     cerrarModal() {
         document.getElementById("editModal").classList.add("hidden");
