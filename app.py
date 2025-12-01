@@ -1,12 +1,11 @@
 import os
+import base64
 from flask import Flask, jsonify, request, render_template, redirect, session
-from werkzeug.utils import secure_filename
 from datetime import datetime
 from functools import wraps
 from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.secret_key = "ElMejorProyecto2025"
 
 # ========================================
@@ -18,7 +17,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 # ========================================
-# MODELOS SQLITE
+# MODELOS
 # ========================================
 
 class Usuario(db.Model):
@@ -32,7 +31,7 @@ class Producto(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(255))
     precio = db.Column(db.Float)
-    imagen = db.Column(db.String(255))
+    imagen_base64 = db.Column(db.Text)   # 🔥 GUARDAMOS BASE64
     habilitado = db.Column(db.Integer, default=1)
     categoria = db.Column(db.String(100))
 
@@ -103,29 +102,29 @@ def home():
     return render_template("index.html")
 
 # ========================================
-# GET PRODUCTOS
+# OBTENER PRODUCTOS
 # ========================================
 @app.route('/productos', methods=['GET'])
 @login_required
 def productos():
 
-    todos = Producto.query.all()
     resultado = []
 
-    for p in todos:
+    for p in Producto.query.all():
+
+        img_src = f"data:image/jpeg;base64,{p.imagen_base64}" if p.imagen_base64 else None
+
         prod = {
             "id": p.id,
             "nombre": p.nombre,
             "precio": p.precio,
-            "imagen": f"/static/uploads/{p.imagen}" if p.imagen else None,
+            "imagen": img_src,
             "habilitado": bool(p.habilitado),
             "categoria": p.categoria,
             "comentarios": []
         }
 
-        comentarios = Comentario.query.filter_by(producto_id=p.id).all()
-
-        for c in comentarios:
+        for c in Comentario.query.filter_by(producto_id=p.id).all():
             prod["comentarios"].append({
                 "nombre": c.nombre,
                 "texto": c.texto,
@@ -151,16 +150,18 @@ def agregar_producto():
     if not nombre or not precio or not imagen:
         return jsonify({"message": "Faltan datos"}), 400
 
-    filename = secure_filename(imagen.filename)
-    imagen.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+    # Convertir imagen a Base64
+    imagen_bytes = imagen.read()
+    imagen_b64 = base64.b64encode(imagen_bytes).decode("utf-8")
 
     nuevo = Producto(
         nombre=nombre,
         precio=float(precio),
         categoria=categoria,
-        imagen=filename,
+        imagen_base64=imagen_b64,
         habilitado=1
     )
+
     db.session.add(nuevo)
     db.session.commit()
 
@@ -170,7 +171,7 @@ def agregar_producto():
             "id": nuevo.id,
             "nombre": nombre,
             "precio": float(precio),
-            "imagen": f"/static/uploads/{filename}",
+            "imagen": f"data:image/jpeg;base64,{imagen_b64}",
             "habilitado": True,
             "categoria": categoria,
             "comentarios": []
@@ -187,20 +188,16 @@ def editar_producto(id):
     data = request.json
     p = Producto.query.get(id)
 
+    if not p:
+        return jsonify({"message": "Producto no existe"}), 404
+
     p.nombre = data.get("nombre")
     p.precio = data.get("precio")
     p.categoria = data.get("categoria")
 
     db.session.commit()
 
-    return jsonify({"message": "OK", "producto": {
-        "id": p.id,
-        "nombre": p.nombre,
-        "precio": p.precio,
-        "categoria": p.categoria,
-        "habilitado": bool(p.habilitado),
-        "imagen": f"/static/uploads/{p.imagen}" if p.imagen else None
-    }})
+    return jsonify({"message": "OK"})
 
 # ========================================
 # TOGGLE PRODUCTO
@@ -210,17 +207,22 @@ def editar_producto(id):
 def toggle_producto(id):
 
     p = Producto.query.get(id)
+    if not p:
+        return jsonify({"message": "Producto no existe"}), 404
+
     p.habilitado = 0 if p.habilitado else 1
     db.session.commit()
 
-    return jsonify({"producto": {
-        "id": p.id,
-        "nombre": p.nombre,
-        "precio": p.precio,
-        "categoria": p.categoria,
-        "habilitado": bool(p.habilitado),
-        "imagen": f"/static/uploads/{p.imagen}" if p.imagen else None
-    }})
+    return jsonify({
+        "producto": {
+            "id": p.id,
+            "nombre": p.nombre,
+            "precio": p.precio,
+            "categoria": p.categoria,
+            "habilitado": bool(p.habilitado),
+            "imagen": f"data:image/jpeg;base64,{p.imagen_base64}"
+        }
+    })
 
 # ========================================
 # ELIMINAR PRODUCTO
