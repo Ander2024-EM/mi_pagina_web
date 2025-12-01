@@ -1,0 +1,6 @@
+Flask
+Flask_SQLAlchemy
+gunicorn
+Flask
+Flask_SQLAlchemy
+gunicorn

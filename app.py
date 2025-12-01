@@ -1,38 +1,64 @@
 import os
 from flask import Flask, jsonify, request, render_template, redirect, session
-from flask_mysqldb import MySQL
 from werkzeug.utils import secure_filename
 from datetime import datetime
 from functools import wraps
+from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
-app.secret_key = "ElMejorProyecto2025"   # tu llave
+app.secret_key = "ElMejorProyecto2025"
 
 # ========================================
-# CONFIGURACIÓN MYSQL
+# CONFIGURACIÓN SQLITE
 # ========================================
-app.config['MYSQL_HOST'] = 'localhost'
-app.config['MYSQL_USER'] = 'root'
-app.config['MYSQL_PASSWORD'] = ''
-app.config['MYSQL_DB'] = 'productos_db'
-app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-mysql = MySQL(app)
-
+db = SQLAlchemy(app)
 
 # ========================================
-# LOGIN REQUIRED (CORREGIDO)
+# MODELOS SQLITE
+# ========================================
+
+class Usuario(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    usuario = db.Column(db.String(100), unique=True)
+    password = db.Column(db.String(100))
+    rol = db.Column(db.String(50))
+
+
+class Producto(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(255))
+    precio = db.Column(db.Float)
+    imagen = db.Column(db.String(255))
+    habilitado = db.Column(db.Integer, default=1)
+    categoria = db.Column(db.String(100))
+
+
+class Comentario(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    producto_id = db.Column(db.Integer)
+    nombre = db.Column(db.String(255))
+    texto = db.Column(db.String(255))
+    fecha = db.Column(db.String(50))
+
+
+# Crear tablas si no existen
+with app.app_context():
+    db.create_all()
+
+# ========================================
+# LOGIN REQUIRED
 # ========================================
 def login_required(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
-        if "user_id" not in session:      # <-- CORREGIDO
+        if "user_id" not in session:
             return redirect("/login")
         return f(*args, **kwargs)
     return wrapper
-
-
 
 # ========================================
 # LOGIN
@@ -41,28 +67,24 @@ def login_required(f):
 def login():
 
     if request.method == "POST":
-        usuario = request.form.get("usuario")   # <-- machea con name="usuario"
+        usuario = request.form.get("usuario")
         password = request.form.get("password")
 
-        cursor = mysql.connection.cursor()
-        cursor.execute("SELECT * FROM usuarios WHERE usuario=%s", (usuario,))
-        user = cursor.fetchone()
+        user = Usuario.query.filter_by(usuario=usuario).first()
 
         if not user:
             return render_template("login.html", mensaje="Usuario no existe")
 
-        if user["password"] != password:
+        if user.password != password:
             return render_template("login.html", mensaje="Contraseña incorrecta")
 
-        # GUARDAR SESIÓN (corregido)
-        session["user_id"] = user["id"]
-        session["user_name"] = user["usuario"]
-        session["user_rol"] = user["rol"]
+        session["user_id"] = user.id
+        session["user_name"] = user.usuario
+        session["user_rol"] = user.rol
 
-        return redirect("/")     # redirige a la ruta protegida
+        return redirect("/")
 
     return render_template("login.html")
-
 
 # ========================================
 # LOGOUT
@@ -72,17 +94,13 @@ def logout():
     session.clear()
     return redirect("/login")
 
-
-
 # ========================================
-# VIEW PRINCIPAL (PROTEGIDA)
+# HOME
 # ========================================
 @app.route("/")
 @login_required
 def home():
     return render_template("index.html")
-
-
 
 # ========================================
 # GET PRODUCTOS
@@ -91,22 +109,32 @@ def home():
 @login_required
 def productos():
 
-    cursor = mysql.connection.cursor()
-    cursor.execute("SELECT * FROM productos")
-    productos = cursor.fetchall()
+    todos = Producto.query.all()
+    resultado = []
 
-    for p in productos:
-        p["habilitado"] = bool(p["habilitado"])
-        if p["imagen"]:
-            p["imagen"] = f"/static/uploads/{p['imagen']}"
+    for p in todos:
+        prod = {
+            "id": p.id,
+            "nombre": p.nombre,
+            "precio": p.precio,
+            "imagen": f"/static/uploads/{p.imagen}" if p.imagen else None,
+            "habilitado": bool(p.habilitado),
+            "categoria": p.categoria,
+            "comentarios": []
+        }
 
-        # obtener comentarios
-        cursor.execute("SELECT nombre, texto, fecha FROM comentarios WHERE producto_id=%s", (p["id"],))
-        p["comentarios"] = cursor.fetchall()
+        comentarios = Comentario.query.filter_by(producto_id=p.id).all()
 
-    return jsonify(productos)
+        for c in comentarios:
+            prod["comentarios"].append({
+                "nombre": c.nombre,
+                "texto": c.texto,
+                "fecha": c.fecha
+            })
 
+        resultado.append(prod)
 
+    return jsonify(resultado)
 
 # ========================================
 # AGREGAR PRODUCTO
@@ -126,19 +154,20 @@ def agregar_producto():
     filename = secure_filename(imagen.filename)
     imagen.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
 
-    cursor = mysql.connection.cursor()
-    cursor.execute("""
-        INSERT INTO productos (nombre, precio, imagen, habilitado, categoria)
-        VALUES (%s, %s, %s, 1, %s)
-    """, (nombre, precio, filename, categoria))
-
-    mysql.connection.commit()
-    new_id = cursor.lastrowid
+    nuevo = Producto(
+        nombre=nombre,
+        precio=float(precio),
+        categoria=categoria,
+        imagen=filename,
+        habilitado=1
+    )
+    db.session.add(nuevo)
+    db.session.commit()
 
     return jsonify({
         "message": "Producto agregado exitosamente",
         "producto": {
-            "id": new_id,
+            "id": nuevo.id,
             "nombre": nombre,
             "precio": float(precio),
             "imagen": f"/static/uploads/{filename}",
@@ -146,9 +175,7 @@ def agregar_producto():
             "categoria": categoria,
             "comentarios": []
         }
-    }), 201
-
-
+    })
 
 # ========================================
 # EDITAR PRODUCTO
@@ -158,74 +185,58 @@ def agregar_producto():
 def editar_producto(id):
 
     data = request.json
+    p = Producto.query.get(id)
 
-    nombre = data.get("nombre")
-    precio = data.get("precio")
-    categoria = data.get("categoria")
+    p.nombre = data.get("nombre")
+    p.precio = data.get("precio")
+    p.categoria = data.get("categoria")
 
-    cursor = mysql.connection.cursor()
-    cursor.execute("""
-        UPDATE productos SET nombre=%s, precio=%s, categoria=%s
-        WHERE id=%s
-    """, (nombre, precio, categoria, id))
+    db.session.commit()
 
-    mysql.connection.commit()
-
-    cursor.execute("SELECT * FROM productos WHERE id=%s", (id,))
-    p = cursor.fetchone()
-
-    p["habilitado"] = bool(p["habilitado"])
-    if p["imagen"]:
-        p["imagen"] = f"/static/uploads/{p['imagen']}"
-
-    return jsonify({"message": "OK", "producto": p})
-
-
+    return jsonify({"message": "OK", "producto": {
+        "id": p.id,
+        "nombre": p.nombre,
+        "precio": p.precio,
+        "categoria": p.categoria,
+        "habilitado": bool(p.habilitado),
+        "imagen": f"/static/uploads/{p.imagen}" if p.imagen else None
+    }})
 
 # ========================================
-# TOGGLE
+# TOGGLE PRODUCTO
 # ========================================
 @app.route('/productos/<int:id>/toggle', methods=['PATCH'])
 @login_required
 def toggle_producto(id):
 
-    cursor = mysql.connection.cursor()
-    cursor.execute("SELECT habilitado FROM productos WHERE id=%s", (id,))
-    row = cursor.fetchone()
+    p = Producto.query.get(id)
+    p.habilitado = 0 if p.habilitado else 1
+    db.session.commit()
 
-    nuevo = 0 if row["habilitado"] else 1
-
-    cursor.execute("UPDATE productos SET habilitado=%s WHERE id=%s", (nuevo, id))
-    mysql.connection.commit()
-
-    cursor.execute("SELECT * FROM productos WHERE id=%s", (id,))
-    p = cursor.fetchone()
-
-    p["habilitado"] = bool(p["habilitado"])
-    if p["imagen"]:
-        p["imagen"] = f"/static/uploads/{p['imagen']}"
-
-    return jsonify({"producto": p})
-
-
+    return jsonify({"producto": {
+        "id": p.id,
+        "nombre": p.nombre,
+        "precio": p.precio,
+        "categoria": p.categoria,
+        "habilitado": bool(p.habilitado),
+        "imagen": f"/static/uploads/{p.imagen}" if p.imagen else None
+    }})
 
 # ========================================
-# ELIMINAR
+# ELIMINAR PRODUCTO
 # ========================================
 @app.route('/productos/<int:id>', methods=['DELETE'])
 @login_required
 def eliminar_producto(id):
 
-    cursor = mysql.connection.cursor()
-    cursor.execute("DELETE FROM comentarios WHERE producto_id=%s", (id,))
-    cursor.execute("DELETE FROM productos WHERE id=%s", (id,))
-    mysql.connection.commit()
+    Comentario.query.filter_by(producto_id=id).delete()
+    Producto.query.filter_by(id=id).delete()
+    db.session.commit()
 
     return jsonify({"message": "Producto eliminado"})
 
-
 # ========================================
-# COMENTARIOS
+# AGREGAR COMENTARIO
 # ========================================
 @app.route("/productos/<int:id>/comentarios", methods=["POST"])
 @login_required
@@ -233,16 +244,17 @@ def agregar_comentario(id):
 
     data = request.json
 
-    cursor = mysql.connection.cursor()
-    cursor.execute("""
-        INSERT INTO comentarios (producto_id, nombre, texto, fecha)
-        VALUES (%s, %s, %s, %s)
-    """, (id, data["nombre"], data["texto"], data["fecha"]))
+    nuevo = Comentario(
+        producto_id=id,
+        nombre=data["nombre"],
+        texto=data["texto"],
+        fecha=data["fecha"]
+    )
 
-    mysql.connection.commit()
+    db.session.add(nuevo)
+    db.session.commit()
+
     return jsonify({"message": "OK"}), 201
-
-
 
 # ========================================
 # RUN
