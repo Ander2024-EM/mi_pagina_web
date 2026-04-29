@@ -62,26 +62,26 @@ mi_pagina_web/
 ├── Procfile
 │
 ├── instance/
-│ └── database.db
+│   └── database.db
 │
 ├── static/
-│ ├── js/
-│ │ ├── api.js
-│ │ ├── main.js
-│ │ ├── ui.js
-│ │ ├── utils.js
-│ │ └── components/
-│ │ └── product-card.js
-│ │
-│ ├── uploads/
-│ │ └── .gitkeep
-│ │
-│ ├── styles.css
-│ └── login.css
+│   ├── js/
+│   │   ├── api.js
+│   │   ├── main.js
+│   │   ├── ui.js
+│   │   ├── utils.js
+│   │   └── components/
+│   │       └── product-card.js
+│   │
+│   ├── uploads/
+│   │   └── .gitkeep
+│   │
+│   ├── styles.css
+│   └── login.css
 │
 └── templates/
-├── index.html
-└── login.html
+    ├── index.html
+    └── login.html
 
 ##  AUTOR
 Ander Elias
