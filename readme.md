@@ -82,7 +82,6 @@ mi_pagina_web/
 └── templates/
     ├── index.html
     └── login.html
-
 ##  AUTOR
 Ander Elias
 Desarrollador de Software y Docente de Programación
